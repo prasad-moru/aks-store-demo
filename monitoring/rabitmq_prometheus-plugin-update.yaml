@@ -1,0 +1,31 @@
+# Update RabbitMQ ConfigMap to expose Prometheus metrics endpoint
+apiVersion: v1
+data:
+  rabbitmq_enabled_plugins: |
+    [rabbitmq_management,rabbitmq_prometheus,rabbitmq_amqp1_0].
+kind: ConfigMap
+metadata:
+  name: rabbitmq-enabled-plugins
+---
+# Update RabbitMQ Service to expose metrics port
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "15692"
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+    - name: rabbitmq-amqp
+      port: 5672
+      targetPort: 5672
+    - name: rabbitmq-http
+      port: 15672
+      targetPort: 15672
+    - name: rabbitmq-prometheus
+      port: 15692
+      targetPort: 15692
+  type: ClusterIP

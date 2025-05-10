@@ -1,0 +1,89 @@
+# Update service definitions to be monitored by Prometheus
+---
+# Order Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "3000"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+  selector:
+    app: order-service
+---
+# Makeline Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: makeline-service
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "3001"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 3001
+    targetPort: 3001
+  selector:
+    app: makeline-service
+---
+# Product Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-service
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "3002"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 3002
+    targetPort: 3002
+  selector:
+    app: product-service
+---
+# Store Front
+apiVersion: v1
+kind: Service
+metadata:
+  name: store-front
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: store-front
+  type: LoadBalancer
+---
+# Store Admin
+apiVersion: v1
+kind: Service
+metadata:
+  name: store-admin
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8081"
+    prometheus.io/path: "/metrics"
+spec:
+  ports:
+  - port: 80
+    targetPort: 8081
+  selector:
+    app: store-admin
+  type: LoadBalancer
