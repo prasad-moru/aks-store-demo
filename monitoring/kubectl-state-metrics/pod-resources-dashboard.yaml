@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: grafana-pod-resources-dashboard
+  name: grafana-pod-dashboard
 data:
-  pod-resources-dashboard.json: |
+  pod-resources-fixed.json: |
     {
       "annotations": {
         "list": [
@@ -21,7 +21,7 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 4,
+      "id": null,
       "links": [],
       "panels": [
         {
@@ -53,7 +53,6 @@ data:
           },
           "lines": true,
           "linewidth": 1,
-          "links": [],
           "nullPointMode": "null",
           "percentage": false,
           "pointradius": 2,
@@ -75,7 +74,7 @@ data:
           "thresholds": [],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Pod CPU Usage (Cores)",
+          "title": "CPU Usage (cores)",
           "tooltip": {
             "shared": true,
             "sort": 2,
@@ -137,7 +136,6 @@ data:
           },
           "lines": true,
           "linewidth": 1,
-          "links": [],
           "nullPointMode": "null",
           "percentage": false,
           "pointradius": 2,
@@ -159,7 +157,7 @@ data:
           "thresholds": [],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Pod Memory Usage",
+          "title": "Memory Usage",
           "tooltip": {
             "shared": true,
             "sort": 2,
@@ -201,7 +199,7 @@ data:
           "fill": 1,
           "gridPos": {
             "h": 9,
-            "w": 12,
+            "w": 24,
             "x": 0,
             "y": 9
           },
@@ -221,7 +219,6 @@ data:
           },
           "lines": true,
           "linewidth": 1,
-          "links": [],
           "nullPointMode": "null",
           "percentage": false,
           "pointradius": 2,
@@ -233,24 +230,24 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(container_network_receive_bytes_total{namespace=~\"$namespace\",pod=~\"$pod\"}[5m])) by (namespace, pod)",
+              "expr": "sum(kube_pod_container_resource_requests{namespace=~\"$namespace\",pod=~\"$pod\",resource=\"cpu\"}) by (namespace, pod, container)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{namespace}}/{{pod}} - Receive",
+              "legendFormat": "{{namespace}}/{{pod}}/{{container}} - CPU Requests",
               "refId": "A"
             },
             {
-              "expr": "sum(rate(container_network_transmit_bytes_total{namespace=~\"$namespace\",pod=~\"$pod\"}[5m])) by (namespace, pod)",
+              "expr": "sum(kube_pod_container_resource_limits{namespace=~\"$namespace\",pod=~\"$pod\",resource=\"cpu\"}) by (namespace, pod, container)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{namespace}}/{{pod}} - Transmit",
+              "legendFormat": "{{namespace}}/{{pod}}/{{container}} - CPU Limits",
               "refId": "B"
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Pod Network I/O",
+          "title": "CPU Requests vs Limits",
           "tooltip": {
             "shared": true,
             "sort": 2,
@@ -266,11 +263,11 @@ data:
           },
           "yaxes": [
             {
-              "format": "Bps",
-              "label": "Network",
+              "format": "short",
+              "label": "CPU",
               "logBase": 1,
               "max": null,
-              "min": null,
+              "min": "0",
               "show": true
             },
             {
@@ -292,9 +289,9 @@ data:
           "fill": 1,
           "gridPos": {
             "h": 9,
-            "w": 12,
-            "x": 12,
-            "y": 9
+            "w": 24,
+            "x": 0,
+            "y": 18
           },
           "id": 4,
           "legend": {
@@ -312,7 +309,6 @@ data:
           },
           "lines": true,
           "linewidth": 1,
-          "links": [],
           "nullPointMode": "null",
           "percentage": false,
           "pointradius": 2,
@@ -324,374 +320,24 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(container_fs_reads_bytes_total{namespace=~\"$namespace\",pod=~\"$pod\",container!=\"POD\",container!=\"\"}[5m])) by (namespace, pod, container)",
+              "expr": "sum(kube_pod_container_resource_requests{namespace=~\"$namespace\",pod=~\"$pod\",resource=\"memory\"}) by (namespace, pod, container)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{namespace}}/{{pod}}/{{container}} - Read",
+              "legendFormat": "{{namespace}}/{{pod}}/{{container}} - Memory Requests",
               "refId": "A"
             },
             {
-              "expr": "sum(rate(container_fs_writes_bytes_total{namespace=~\"$namespace\",pod=~\"$pod\",container!=\"POD\",container!=\"\"}[5m])) by (namespace, pod, container)",
+              "expr": "sum(kube_pod_container_resource_limits{namespace=~\"$namespace\",pod=~\"$pod\",resource=\"memory\"}) by (namespace, pod, container)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{namespace}}/{{pod}}/{{container}} - Write",
+              "legendFormat": "{{namespace}}/{{pod}}/{{container}} - Memory Limits",
               "refId": "B"
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Pod Disk I/O",
-          "tooltip": {
-            "shared": true,
-            "sort": 2,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "Bps",
-              "label": "Disk I/O",
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": false
-            }
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "Prometheus",
-          "fill": 1,
-          "gridPos": {
-            "h": 9,
-            "w": 12,
-            "x": 0,
-            "y": 18
-          },
-          "id": 5,
-          "legend": {
-            "alignAsTable": true,
-            "avg": false,
-            "current": true,
-            "max": false,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "sort": "current",
-            "sortDesc": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "sum(container_cpu_usage_seconds_total{namespace=~\"$namespace\",pod=~\"$pod\",container!=\"POD\",container!=\"\"}) by (namespace, pod, container) / sum(container_spec_cpu_quota{namespace=~\"$namespace\",pod=~\"$pod\",container!=\"POD\",container!=\"\"} / container_spec_cpu_period{namespace=~\"$namespace\",pod=~\"$pod\",container!=\"POD\",container!=\"\"}) by (namespace, pod, container) * 100",
-              "format": "time_series",
-              "intervalFactor": 1,
-              "legendFormat": "{{namespace}}/{{pod}}/{{container}}",
-              "refId": "A"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "CPU Usage vs Limit (%)",
-          "tooltip": {
-            "shared": true,
-            "sort": 2,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "percent",
-              "label": "CPU %",
-              "logBase": 1,
-              "max": "100",
-              "min": "0",
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": false
-            }
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "Prometheus",
-          "fill": 1,
-          "gridPos": {
-            "h": 9,
-            "w": 12,
-            "x": 12,
-            "y": 18
-          },
-          "id": 6,
-          "legend": {
-            "alignAsTable": true,
-            "avg": false,
-            "current": true,
-            "max": false,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "sort": "current",
-            "sortDesc": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "sum(container_memory_working_set_bytes{namespace=~\"$namespace\",pod=~\"$pod\",container!=\"POD\",container!=\"\"}) by (namespace, pod, container) / sum(container_spec_memory_limit_bytes{namespace=~\"$namespace\",pod=~\"$pod\",container!=\"POD\",container!=\"\"}) by (namespace, pod, container) * 100",
-              "format": "time_series",
-              "intervalFactor": 1,
-              "legendFormat": "{{namespace}}/{{pod}}/{{container}}",
-              "refId": "A"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Memory Usage vs Limit (%)",
-          "tooltip": {
-            "shared": true,
-            "sort": 2,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "percent",
-              "label": "Memory %",
-              "logBase": 1,
-              "max": "100",
-              "min": "0",
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": false
-            }
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "Prometheus",
-          "fill": 1,
-          "gridPos": {
-            "h": 9,
-            "w": 24,
-            "x": 0,
-            "y": 27
-          },
-          "id": 7,
-          "legend": {
-            "alignAsTable": true,
-            "avg": false,
-            "current": true,
-            "max": false,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "sort": "current",
-            "sortDesc": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "sum(kube_pod_container_resource_requests_cpu_cores{namespace=~\"$namespace\",pod=~\"$pod\"}) by (namespace, pod, container)",
-              "format": "time_series",
-              "intervalFactor": 1,
-              "legendFormat": "{{namespace}}/{{pod}}/{{container}} - Requests",
-              "refId": "A"
-            },
-            {
-              "expr": "sum(kube_pod_container_resource_limits_cpu_cores{namespace=~\"$namespace\",pod=~\"$pod\"}) by (namespace, pod, container)",
-              "format": "time_series",
-              "intervalFactor": 1,
-              "legendFormat": "{{namespace}}/{{pod}}/{{container}} - Limits",
-              "refId": "B"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Pod CPU Requests vs Limits",
-          "tooltip": {
-            "shared": true,
-            "sort": 2,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": "CPU Cores",
-              "logBase": 1,
-              "max": null,
-              "min": "0",
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": false
-            }
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "Prometheus",
-          "fill": 1,
-          "gridPos": {
-            "h": 9,
-            "w": 24,
-            "x": 0,
-            "y": 36
-          },
-          "id": 8,
-          "legend": {
-            "alignAsTable": true,
-            "avg": false,
-            "current": true,
-            "max": false,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "sort": "current",
-            "sortDesc": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "sum(kube_pod_container_resource_requests_memory_bytes{namespace=~\"$namespace\",pod=~\"$pod\"}) by (namespace, pod, container)",
-              "format": "time_series",
-              "intervalFactor": 1,
-              "legendFormat": "{{namespace}}/{{pod}}/{{container}} - Requests",
-              "refId": "A"
-            },
-            {
-              "expr": "sum(kube_pod_container_resource_limits_memory_bytes{namespace=~\"$namespace\",pod=~\"$pod\"}) by (namespace, pod, container)",
-              "format": "time_series",
-              "intervalFactor": 1,
-              "legendFormat": "{{namespace}}/{{pod}}/{{container}} - Limits",
-              "refId": "B"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Pod Memory Requests vs Limits",
+          "title": "Memory Requests vs Limits",
           "tooltip": {
             "shared": true,
             "sort": 2,

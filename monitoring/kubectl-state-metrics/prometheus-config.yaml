@@ -21,10 +21,49 @@ data:
           action: keep
           regex: default;kubernetes;https
 
-      # Scrape config for cAdvisor (on port 8090)
+      # This job scrapes container metrics from cAdvisor on each node
+      - job_name: 'kubernetes-cadvisor'
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+        - role: node
+        relabel_configs:
+        - action: labelmap
+          regex: __meta_kubernetes_node_label_(.+)
+        - target_label: __address__
+          replacement: kubernetes.default.svc:443
+        - source_labels: [__meta_kubernetes_node_name]
+          regex: (.+)
+          target_label: __metrics_path__
+          replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+        metric_relabel_configs:
+        - source_labels: [container]
+          target_label: container_name
+        - source_labels: [pod]
+          target_label: pod_name
+
+      # Separate cAdvisor DaemonSet job
       - job_name: 'cadvisor'
-        static_configs:
-        - targets: ['cadvisor:8090']    
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_name]
+          action: keep
+          regex: cadvisor
+        - source_labels: [__meta_kubernetes_pod_container_port_name]
+          action: keep
+          regex: http
+        - source_labels: [__address__, __meta_kubernetes_pod_container_port_number]
+          action: replace
+          regex: ([^:]+)(?::\d+)?;(\d+)
+          replacement: $1:$2
+          target_label: __address__
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: kubernetes_namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: kubernetes_pod_name
           
       - job_name: 'kubernetes-nodes'
         scheme: https
@@ -42,24 +81,6 @@ data:
           regex: (.+)
           target_label: __metrics_path__
           replacement: /api/v1/nodes/${1}/proxy/metrics
-      
-      # This is the missing job that collects container metrics!
-      - job_name: 'kubernetes-nodes-cadvisor'
-        scheme: https
-        tls_config:
-          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-        kubernetes_sd_configs:
-        - role: node
-        relabel_configs:
-        - action: labelmap
-          regex: __meta_kubernetes_node_label_(.+)
-        - target_label: __address__
-          replacement: kubernetes.default.svc:443
-        - source_labels: [__meta_kubernetes_node_name]
-          regex: (.+)
-          target_label: __metrics_path__
-          replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
       
       - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
@@ -129,5 +150,14 @@ data:
 
       # Node Exporter
       - job_name: 'node-exporter'
-        static_configs:
-        - targets: ['node-exporter:9100']  
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          action: keep
+          regex: node-exporter
+        - source_labels: [__address__, __meta_kubernetes_pod_container_port_number]
+          action: replace
+          regex: ([^:]+)(?::\d+)?;(\d+)
+          replacement: $1:$2
+          target_label: __address__
