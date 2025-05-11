@@ -1,0 +1,84 @@
+# Test Prometheus Queries
+
+## Basic Queries to Test in Grafana
+
+### CPU Usage
+```
+# Total CPU usage for all containers
+sum(rate(container_cpu_usage_seconds_total{container!="POD"}[5m]))
+
+# CPU usage by container
+sum(rate(container_cpu_usage_seconds_total{container!="POD"}[5m])) by (container)
+
+# CPU usage by pod
+sum(rate(container_cpu_usage_seconds_total{container!="POD"}[5m])) by (pod)
+
+# CPU usage by pod and container
+sum(rate(container_cpu_usage_seconds_total{container!="POD"}[5m])) by (pod, container)
+```
+
+### Memory Usage
+```
+# Total memory usage for all containers
+sum(container_memory_working_set_bytes{container!="POD"})
+
+# Memory usage by container
+sum(container_memory_working_set_bytes{container!="POD"}) by (container)
+
+# Memory usage by pod
+sum(container_memory_working_set_bytes{container!="POD"}) by (pod)
+
+# Memory usage by pod and container
+sum(container_memory_working_set_bytes{container!="POD"}) by (pod, container)
+```
+
+### Resource Requests/Limits
+```
+# CPU requests by pod
+sum(kube_pod_container_resource_requests{resource="cpu"}) by (pod)
+
+# CPU limits by pod
+sum(kube_pod_container_resource_limits{resource="cpu"}) by (pod)
+
+# Memory requests by pod
+sum(kube_pod_container_resource_requests{resource="memory"}) by (pod)
+
+# Memory limits by pod
+sum(kube_pod_container_resource_limits{resource="memory"}) by (pod)
+```
+
+### Network I/O
+```
+# Network receive rate
+sum(rate(container_network_receive_bytes_total[5m])) by (pod)
+
+# Network transmit rate
+sum(rate(container_network_transmit_bytes_total[5m])) by (pod)
+```
+
+### Filesystem Usage
+```
+# Filesystem usage by pod
+sum(container_fs_usage_bytes) by (pod)
+
+# Filesystem available by pod
+sum(container_fs_available_bytes) by (pod)
+```
+
+## Troubleshooting Steps
+
+1. First, test these queries directly in Prometheus:
+   - Go to http://localhost:9090/graph
+   - Enter the query
+   - Click "Execute"
+   - Switch to "Graph" tab to see visualization
+
+2. If queries work in Prometheus but not in Grafana:
+   - Check datasource configuration in Grafana
+   - Verify Prometheus URL is correct (http://prometheus:9090)
+   - Check time range in Grafana
+
+3. Common issues:
+   - Empty results: Check if containers have the labels you're filtering by
+   - No data points: Increase time range or adjust rate() interval
+   - Wrong values: Check if using correct metric (working_set_bytes vs usage_bytes)

@@ -13,21 +13,20 @@ spec:
         name: cadvisor
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
+        prometheus.io/port: "8090"
         prometheus.io/path: "/metrics"
     spec:
       containers:
       - name: cadvisor
         image: gcr.io/cadvisor/cadvisor:v0.47.0
         args:
-        - --port=8080
+        - --port=8090
         - --housekeeping_interval=10s
         - --max_housekeeping_interval=15s
         - --event_storage_event_limit=default=0
         - --event_storage_age_limit=default=0
-        - --disable_metrics=percpu,sched,tcp,udp,disk,diskIO,process,hugetlb,referenced_memory,cpu_topology,resctrl
         ports:
-        - containerPort: 8080
+        - containerPort: 8090
           protocol: TCP
           name: http
         securityContext:
@@ -57,6 +56,9 @@ spec:
         - name: dev
           mountPath: /dev
           readOnly: true
+        - name: cgroup
+          mountPath: /sys/fs/cgroup
+          readOnly: true
       volumes:
       - name: rootfs
         hostPath:
@@ -73,9 +75,17 @@ spec:
       - name: dev
         hostPath:
           path: /dev
+      - name: cgroup
+        hostPath:
+          path: /sys/fs/cgroup
       hostNetwork: true
       hostPID: true
-      automountServiceAccountToken: false
+      serviceAccountName: cadvisor
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cadvisor
 ---
 apiVersion: v1
 kind: Service
@@ -83,12 +93,12 @@ metadata:
   name: cadvisor
   annotations:
     prometheus.io/scrape: "true"
-    prometheus.io/port: "8080"
+    prometheus.io/port: "8090"
 spec:
   selector:
     name: cadvisor
   ports:
   - name: http
-    port: 8080
-    targetPort: 8080
+    port: 8090
+    targetPort: 8090
     protocol: TCP
