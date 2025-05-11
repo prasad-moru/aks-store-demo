@@ -1,0 +1,64 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: store-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: store.local
+    http:
+      paths:
+      # Main store front
+      - path: /?(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: store-front
+            port:
+              number: 80
+              
+  # Admin interface on separate subdomain
+  - host: admin.store.local
+    http:
+      paths:
+      - path: /?(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: store-admin
+            port:
+              number: 80
+              
+  # API endpoints on api subdomain
+  - host: api.store.local
+    http:
+      paths:
+      # Orders API
+      - path: /orders/?(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: order-service
+            port:
+              number: 3000
+      
+      # Products API
+      - path: /products/?(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: product-service
+            port:
+              number: 3002
+              
+      # Makeline API
+      - path: /makeline/?(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: makeline-service
+            port:
+              number: 3001

@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cadvisor
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      name: cadvisor
+  template:
+    metadata:
+      labels:
+        name: cadvisor
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: cadvisor
+        image: gcr.io/cadvisor/cadvisor:v0.47.0
+        args:
+        - --port=8090
+        - --housekeeping_interval=10s
+        - --max_housekeeping_interval=15s
+        - --event_storage_event_limit=default=0
+        - --event_storage_age_limit=default=0
+        - --enable_metrics=cpu,cpuLoad,disk,diskIO,memory,network
+        - --docker_only=true
+        - --store_container_labels=false
+        ports:
+        - containerPort: 8090
+          protocol: TCP
+          name: http
+        securityContext:
+          privileged: true
+          runAsUser: 0
+          runAsGroup: 0
+          capabilities:
+            add:
+            - SYS_ADMIN
+            - SYS_RESOURCE
+            - SYS_PTRACE
+            - NET_ADMIN
+        resources:
+          requests:
+            memory: 100Mi
+            cpu: 50m
+          limits:
+            memory: 400Mi
+            cpu: 300m
+        volumeMounts:
+        - name: rootfs
+          mountPath: /rootfs
+          readOnly: true
+        - name: var-run
+          mountPath: /var/run
+          readOnly: false
+        - name: sys
+          mountPath: /sys
+          readOnly: true
+        - name: docker
+          mountPath: /var/lib/docker
+          readOnly: true
+        - name: disk
+          mountPath: /dev/disk
+          readOnly: true
+        - name: kmsg
+          mountPath: /dev/kmsg
+          readOnly: true
+      volumes:
+      - name: rootfs
+        hostPath:
+          path: /
+      - name: var-run
+        hostPath:
+          path: /var/run
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: docker
+        hostPath:
+          path: /var/lib/docker
+      - name: disk
+        hostPath:
+          path: /dev/disk
+      - name: kmsg
+        hostPath:
+          path: /dev/kmsg
+      hostNetwork: true
+      hostPID: true
+      automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cadvisor
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8090"
+spec:
+  selector:
+    name: cadvisor
+  ports:
+  - name: http
+    port: 8090
+    targetPort: 8090
+    protocol: TCP
