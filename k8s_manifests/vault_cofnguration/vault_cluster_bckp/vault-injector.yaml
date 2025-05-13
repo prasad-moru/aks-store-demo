@@ -1,0 +1,154 @@
+# Save as vault-injector-with-cert.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-agent-injector
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vault-agent-injector-clusterrole
+rules:
+- apiGroups: [""]
+  resources: ["pods", "secrets", "configmaps", "services"]
+  verbs: ["get", "list", "watch", "patch"]
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["mutatingwebhookconfigurations"]
+  verbs: ["get", "list", "watch", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vault-agent-injector-binding
+subjects:
+- kind: ServiceAccount
+  name: vault-agent-injector
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vault-agent-injector-clusterrole
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-agent-injector-svc
+  labels:
+    app: vault-agent-injector
+spec:
+  ports:
+  - port: 443
+    targetPort: 8080
+  selector:
+    app: vault-agent-injector
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault-agent-injector
+  labels:
+    app: vault-agent-injector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vault-agent-injector
+  template:
+    metadata:
+      labels:
+        app: vault-agent-injector
+    spec:
+      serviceAccountName: vault-agent-injector
+      # Add init container to generate TLS certificates
+      initContainers:
+      - name: cert-init
+        image: alpine/openssl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          mkdir -p /certs
+          # Generate a CA certificate
+          openssl genrsa -out /certs/ca.key 2048
+          openssl req -x509 -new -nodes -key /certs/ca.key -sha256 -days 1825 -out /certs/ca.crt -subj "/CN=Vault Agent Injector CA"
+          
+          # Generate a certificate for the webhook
+          openssl genrsa -out /certs/tls.key 2048
+          openssl req -new -key /certs/tls.key -out /certs/tls.csr -subj "/CN=vault-agent-injector-svc.default.svc" -config <(
+            cat <<EOF
+            [req]
+            req_extensions = v3_req
+            distinguished_name = req_distinguished_name
+            [req_distinguished_name]
+            [v3_req]
+            basicConstraints = CA:FALSE
+            keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+            extendedKeyUsage = serverAuth
+            subjectAltName = @alt_names
+            [alt_names]
+            DNS.1 = vault-agent-injector-svc
+            DNS.2 = vault-agent-injector-svc.default
+            DNS.3 = vault-agent-injector-svc.default.svc
+            EOF
+          )
+          
+          # Create the certificate
+          openssl x509 -req -in /certs/tls.csr -CA /certs/ca.crt -CAkey /certs/ca.key -CAcreateserial -out /certs/tls.crt -days 1825 -extensions v3_req -extfile <(
+            cat <<EOF
+            [v3_req]
+            basicConstraints = CA:FALSE
+            keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+            extendedKeyUsage = serverAuth
+            subjectAltName = @alt_names
+            [alt_names]
+            DNS.1 = vault-agent-injector-svc
+            DNS.2 = vault-agent-injector-svc.default
+            DNS.3 = vault-agent-injector-svc.default.svc
+            EOF
+          )
+          
+          # Output the CA certificate encoded in base64 for the webhook configuration
+          echo "CA Bundle for webhook configuration:"
+          cat /certs/ca.crt | base64 | tr -d '\n'
+        volumeMounts:
+        - name: certs
+          mountPath: /certs
+      containers:
+      - name: vault-agent-injector
+        image: hashicorp/vault-k8s:1.3.1
+        imagePullPolicy: IfNotPresent
+        args:
+        - agent-inject
+        - -tls-cert-file=/certs/tls.crt
+        - -tls-key-file=/certs/tls.key
+        env:
+        - name: AGENT_INJECT_LISTEN
+          value: ":8080"
+        - name: AGENT_INJECT_VAULT_ADDR
+          value: http://vault:8200
+        - name: AGENT_INJECT_VAULT_AUTH_PATH
+          value: auth/kubernetes
+        - name: AGENT_INJECT_LOG_LEVEL
+          value: debug
+        volumeMounts:
+        - name: certs
+          mountPath: /certs
+        livenessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          failureThreshold: 2
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          failureThreshold: 2
+      volumes:
+      - name: certs
+        emptyDir: {}

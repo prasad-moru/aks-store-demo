@@ -1,0 +1,62 @@
+# Enable KV secrets engine
+kubectl exec -it vault-0 -- vault secrets enable -path=kv kv-v2
+
+# Store your AI service secrets
+kubectl exec -it vault-0 -- vault kv put kv/ai-service \
+  openai_api_key="your-actual-openai-key" \
+  openai_org_id="your-actual-org-id" \
+  azure_openai_api_key="your-actual-azure-key"
+
+# Create policy for AI service
+kubectl exec -it vault-0 -- vault policy write ai-service-policy - <<EOF
+path "kv/data/ai-service" {
+  capabilities = ["read"]
+}
+EOF
+
+# Configure Kubernetes auth
+kubectl exec -it vault-0 -- vault auth enable kubernetes
+kubectl exec -it vault-0 -- vault write auth/kubernetes/config \
+  kubernetes_host="https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT"
+
+# Create role for AI service
+kubectl exec -it vault-0 -- vault write auth/kubernetes/role/ai-service \
+  bound_service_account_names=ai-service \
+  bound_service_account_namespaces=default \
+  policies=ai-service-policy \
+  ttl=24h
+
+
+
+  Key Benefits of This Approach:
+No Hardcoded Secrets: Removes sensitive data from your YAML files
+
+Dynamic Secrets: Secrets can be rotated without redeploying
+
+Fine-Grained Access Control: Each service gets only the secrets it needs
+
+Audit Trail: All secret accesses are logged in Vault
+
+Migration Steps:
+First deploy the Vault Agent Injector (if not already done):
+
+bash
+kubectl apply -f vault-agent-injector.yaml
+Apply the updated AI service:
+
+bash
+kubectl apply -f ai-service.yaml
+Verify secret injection:
+
+bash
+kubectl exec -it $(kubectl get pods -l app=ai-service -o jsonpath='{.items[0].metadata.name}') -- cat /vault/secrets/config
+Alternative Approach: Environment Variables via Vault Sidecar
+If your application can't be modified to source the secrets file, you can use this alternative template:
+
+yaml
+vault.hashicorp.com/agent-inject-template-config: |
+  {{- with secret "kv/data/ai-service" -}}
+  export OPENAI_API_KEY="{{ .Data.data.openai_api_key }}"
+  export OPENAI_ORG_ID="{{ .Data.data.openai_org_id }}"
+  export AZURE_OPENAI_API_KEY="{{ .Data.data.azure_openai_api_key }}"
+  {{- end }}

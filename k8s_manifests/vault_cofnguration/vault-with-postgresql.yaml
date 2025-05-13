@@ -1,0 +1,149 @@
+# vault-with-postgresql.yaml
+---
+# PostgreSQL StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-vault
+spec:
+  serviceName: postgres-vault
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-vault
+  template:
+    metadata:
+      labels:
+        app: postgres-vault
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:14
+        env:
+        - name: POSTGRES_DB
+          value: vault
+        - name: POSTGRES_USER
+          value: vault
+        - name: POSTGRES_PASSWORD
+          value: vaultpassword
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - vault
+          initialDelaySeconds: 5
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 5Gi
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-vault
+spec:
+  selector:
+    app: postgres-vault
+  ports:
+  - port: 5432
+    targetPort: 5432
+---
+# Vault ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-config
+data:
+  vault.hcl: |
+    ui = true
+    disable_mlock = true
+    
+    listener "tcp" {
+      tls_disable = 1
+      address = "0.0.0.0:8200"
+      cluster_address = "0.0.0.0:8201"
+    }
+    
+    storage "postgresql" {
+      connection_url = "postgres://vault:vaultpassword@postgres-vault:5432/vault?sslmode=disable"
+      ha_enabled = "false"
+    }
+    
+    api_addr = "http://0.0.0.0:8200"
+---
+# Vault StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: vault
+spec:
+  serviceName: vault
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vault
+  template:
+    metadata:
+      labels:
+        app: vault
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: jbergknoff/postgresql-client
+        command: ['sh', '-c', 
+          'until pg_isready -h postgres-vault -U vault -d vault; do echo "Waiting for PostgreSQL"; sleep 2; done']
+        env:
+        - name: PGPASSWORD
+          value: "vaultpassword"
+      containers:
+      - name: vault
+        image: hashicorp/vault:1.15.2
+        command: ["vault", "server", "-config=/vault/config/vault.hcl"]
+        env:
+        - name: VAULT_API_ADDR
+          value: "http://0.0.0.0:8200"
+        - name: SKIP_CHOWN
+          value: "true"
+        ports:
+        - containerPort: 8200
+          name: http
+        - containerPort: 8201
+          name: cluster
+        volumeMounts:
+        - name: vault-config
+          mountPath: /vault/config
+      volumes:
+      - name: vault-config
+        configMap:
+          name: vault-config
+---
+# Vault Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault
+spec:
+  type: ClusterIP
+  selector:
+    app: vault
+  ports:
+  - name: http
+    port: 8200
+    targetPort: 8200
+  - name: cluster
+    port: 8201
+    targetPort: 8201

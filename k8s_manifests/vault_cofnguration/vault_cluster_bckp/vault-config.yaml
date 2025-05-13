@@ -1,0 +1,23 @@
+# vault-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-config
+data:
+  vault.hcl: |
+    ui = true
+    
+    listener "tcp" {
+      tls_disable = 1
+      address = "0.0.0.0:8200"
+    }
+    
+    storage "postgresql" {
+      connection_url = "postgres://vault:vaultpassword@postgres-vault:5432/vault?sslmode=disable"
+      ha_enabled = false  # This disables HA for standalone mode
+    }
+    
+    api_addr = "http://0.0.0.0:8200"
+    
+    # Disable clustering for standalone mode
+    disable_clustering = true

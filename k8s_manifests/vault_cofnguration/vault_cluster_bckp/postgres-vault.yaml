@@ -1,0 +1,76 @@
+# postgres-vault.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-vault
+spec:
+  serviceName: postgres-vault
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-vault
+  template:
+    metadata:
+      labels:
+        app: postgres-vault
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:14
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: vault
+        - name: POSTGRES_USER
+          value: vault
+        - name: POSTGRES_PASSWORD
+          value: vaultpassword  # Change this in production
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - vault
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - vault
+          initialDelaySeconds: 5
+          periodSeconds: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-vault
+spec:
+  selector:
+    app: postgres-vault
+  ports:
+  - port: 5432
+    targetPort: 5432

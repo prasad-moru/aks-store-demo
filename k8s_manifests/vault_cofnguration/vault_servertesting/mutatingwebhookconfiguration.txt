@@ -1,0 +1,56 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: "2025-05-12T09:19:03Z"
+  generation: 2
+  labels:
+    app: vault-agent-injector
+  name: vault-agent-injector-cfg
+  resourceVersion: "241289"
+  uid: 1d9dd928-0bbb-4cfa-aa60-390cf05586bb
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tDQpNSUlEQmpDQ0FlNmdBd0lCQWdJQkFUQU5CZ2txaGtpRzl3MEJBUXNGQURBVk1STXdFUVlEVlFRREV3cHRhVzVwDQphM1ZpWlVOQk1CNFhEVEkxTURVd01URTJORGcwTVZvWERUTTFNRFF6TURFMk5EZzBNVm93RlRFVE1CRUdBMVVFDQpBeE1LYldsdWFXdDFZbVZEUVRDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTUMzDQprTmtuQjdydUxDamo0eUJhZVNHbUZnbnJJamhQeWJ4eDd5V2tmYVpyMXZnR1p0cy9GelNVeldjV25UM1d0dFdCDQpLWEx1MXI5WXkzTjAxMXFkdHVQcmtrTmVSM3pidTROdzJtZHVpSEU5QVpaNkJJOXRWc0c2WlV0SkJESUhzV293DQpBYWYvRkNLMlBsU1dQcUVmejd1QmRVd05KQVpIVlFPTjRCS2RxQ0VvbmFESndHWkQyR0xvRHkrZ3V4TWdXRmMxDQphQTdpZXI0UEQrdHpFWUh2SzNwNU85U0RFb3NXRDcrbHhPM0wybTBJVGZ6d2ZOcHN0N0gzdGh5eUVCMmErVUluDQpnRlR6cDJkTGRGK1BvMFozNWVJRldJZzJaWkg4RzQ1K1Q1VEpEbHIwWTB5RTdCb3FONFdSWWZTWmlTTHhTNUVIDQpwY3NNK3kwdUp2WkdEejBqdjlFQ0F3RUFBYU5oTUY4d0RnWURWUjBQQVFIL0JBUURBZ0trTUIwR0ExVWRKUVFXDQpNQlFHQ0NzR0FRVUZCd01DQmdnckJnRUZCUWNEQVRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXDQpCQlRjekdmaFltbjRzbTZ2d1o3VW9wRHRMNWlha2pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQVFGUFR5dE1kDQpLL1NZN3FQTEI2TFphUFFtVUdOU1h6QUNFL1hXT1lwN3hiRjBWUUdrOW5PQWFjQ2I2TVFIWmgvb2J1UlEvM2FmDQp5dSswTkNYTlpmY2ZpeDkwWlMyZUk0NmpVNXVqUGpJRzM3c3lRY2xyZVVhM0VFLy8zUkE1SmVaK2wxd3crM0o3DQpQV1hvejdmMVVXUHN3TXkzRGIwT25LcnA2aTNYSzMydkR1WVl4UkNvd09YWVRIWjBBRW8wa0NoV2p2MzlRMFZkDQpScms0MTgrMGhQcUxZR1pUUkJxZVBFTDkzc3lNTmt5R3IrNWRnV2graXBjOXVPRlRZY0Zrc2JlRkpTc0FVZmtiDQo0K0RnSFdla1B6cEtZcWRiNENIcjVpbS90OGp0eW1QNFoxUGFpSUxxTG9Rd3Y1Y0hPTWJWZ1dpYm1wd29kNUEyDQpsWkZoWEhPZ3o2Mnd1Zz09DQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tDQo=
+    service:
+      name: vault-agent-injector
+      namespace: default
+      path: /mutate
+      port: 443
+  failurePolicy: Ignore
+  matchPolicy: Equivalent
+  name: vault.hashicorp.com
+  namespaceSelector: {}
+  objectSelector: {}
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
+    scope: '*'
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - secrets
+    scope: '*'
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - configmaps
+    scope: '*'
+  sideEffects: None
+  timeoutSeconds: 10
